@@ -4,13 +4,13 @@ import torch.optim as optim
 import torch.nn.functional as F
 from torch.utils.data import TensorDataset, DataLoader
 import numpy as np
-from matplotlib import pyplot
+from matplotlib import pyplot as plt
 import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.feature_extraction.text import TfidfVectorizer
 from nltk.corpus import stopwords
 from nltk import word_tokenize
-from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, classification_report
+from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, recall_score, classification_report,ConfusionMatrixDisplay
 
 def preprocess_pandas(data, columns):
     df_ = pd.DataFrame(columns=columns)
@@ -68,6 +68,7 @@ val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
 train_losses = []
 val_losses = []
 
+
 # Define ANN Model
 class SentimentANN(nn.Module):
     def __init__(self, input_dim, hidden_dim=128):
@@ -83,6 +84,7 @@ class SentimentANN(nn.Module):
         out = self.dropout(out)
         out = self.fc2(out)
         return out
+
 
 # Initialize model
 model = SentimentANN(input_dim=train_x_tensor.shape[1])
@@ -105,32 +107,67 @@ for epoch in range(epochs):
     avg_train_loss = running_train_loss / len(train_loader)
     train_losses.append(avg_train_loss)
 
-    # Validation loss
+    # Validation phase
     model.eval()
     running_val_loss = 0.0
     with torch.no_grad():
         for inputs, labels in val_loader:
             outputs = model(inputs)
-            val_loss = criterion(outputs, labels)
-            running_val_loss += val_loss.item()
+            loss = criterion(outputs, labels)
+            running_val_loss += loss.item()
 
     avg_val_loss = running_val_loss / len(val_loader)
     val_losses.append(avg_val_loss)
 
-    print(f"Epoch [{epoch+1}/{epochs}] - Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
 
-# Evaluation
+# Final Evaluation (after training is complete)
 def evaluate(model, dataloader):
     model.eval()
-    correct = 0
-    total = 0
+    all_preds = []
+    all_labels = []
     with torch.no_grad():
         for inputs, labels in dataloader:
             outputs = model(inputs)
             _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
-            correct += (predicted == labels).sum().item()
-    return correct / total
+            all_preds.extend(predicted.cpu().numpy())
+            all_labels.extend(labels.cpu().numpy())
 
-val_accuracy = evaluate(model, val_loader)
+    # Calculate accuracy
+    acc = accuracy_score(all_labels, all_preds)
+    return acc, all_preds, all_labels
+
+
+# Get final metrics
+val_accuracy, all_preds, all_labels = evaluate(model, val_loader)
 print(f"\nValidation Accuracy: {val_accuracy * 100:.2f}%")
+
+# Calculate other metrics
+precision = precision_score(all_labels, all_preds)
+recall = recall_score(all_labels, all_preds)
+cm = confusion_matrix(all_labels, all_preds)
+report = classification_report(all_labels, all_preds, target_names=["Negative", "Positive"])
+
+# Print metrics
+print("\nPrecision: {:.4f}".format(precision))
+print("Recall: {:.4f}".format(recall))
+print("\nClassification Report:\n", report)
+
+# Plot confusion matrix
+disp = ConfusionMatrixDisplay(confusion_matrix=cm, display_labels=["Negative", "Positive"])
+disp.plot(cmap='Blues')
+plt.title("Confusion Matrix")
+plt.grid(False)
+plt.tight_layout()
+plt.show()
+
+# Plot training vs validation loss
+plt.figure(figsize=(8, 5))
+plt.plot(train_losses, label='Training Loss', marker='o')
+plt.plot(val_losses, label='Validation Loss', marker='x')
+plt.title("Training vs. Validation Loss")
+plt.xlabel("Epoch")
+plt.ylabel("Loss")
+plt.legend()
+plt.grid(True)
+plt.tight_layout()
+plt.show()
