@@ -15,10 +15,10 @@ from sklearn.metrics import accuracy_score, confusion_matrix, precision_score, r
 def preprocess_pandas(data, columns):
     df_ = pd.DataFrame(columns=columns)
     data['Sentence'] = data['Sentence'].str.lower()
-    data['Sentence'] = data['Sentence'].replace('[a-zA-Z0-9-_.]+@[a-zA-Z0-9-_.]+', '', regex=True)                      # remove emails
-    data['Sentence'] = data['Sentence'].replace('((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}', '', regex=True)    # remove IP address
-    data['Sentence'] = data['Sentence'].str.replace('[^\w\s]','')                                                       # remove special characters
-    data['Sentence'] = data['Sentence'].replace('\d', '', regex=True)                                                   # remove numbers
+    data['Sentence'] = data['Sentence'].replace(r'[a-zA-Z0-9-_.]+@[a-zA-Z0-9-_.]+', '', regex=True)                      # remove emails
+    data['Sentence'] = data['Sentence'].replace(r'((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(\.|$)){4}', '', regex=True)    # remove IP address
+    data['Sentence'] = data['Sentence'].str.replace(r'[^\w\s]','')                                                       # remove special characters
+    data['Sentence'] = data['Sentence'].replace(r'\d', '', regex=True)                                                   # remove numbers
     for index, row in data.iterrows():
         word_tokens = word_tokenize(row['Sentence'])
         filtered_sent = [w for w in word_tokens if not w in stopwords.words('english')]
